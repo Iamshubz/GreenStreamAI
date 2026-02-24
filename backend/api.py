@@ -27,9 +27,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Google Gemini client
-genai.configure(api_key=os.getenv("GEMINI_API_KEY", ""))
-gemini_model = genai.GenerativeModel("gemini-pro")
+# Initialize Google Gemini client (optional)
+_gemini_api_key = os.getenv("GEMINI_API_KEY")
+if _gemini_api_key:
+    genai.configure(api_key=_gemini_api_key)
+    gemini_model = genai.GenerativeModel("gemini-pro")
+else:
+    gemini_model = None
 
 def start_pipeline():
     """Start pipeline in background thread"""
@@ -156,6 +160,8 @@ async def get_insights(city: str) -> AIInsight:
     latest_alert = city_alerts[-1]
     
     try:
+        if gemini_model is None:
+            raise RuntimeError("Gemini API key not configured")
         prompt = f"""Environmental Alert Analysis for {city}:
 CO2: {latest_alert['co2']} ppm | AQI: {latest_alert['aqi']}
 Temperature: {latest_alert['temperature']}°C | Humidity: {latest_alert['humidity']}%
