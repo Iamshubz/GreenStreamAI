@@ -1,0 +1,20 @@
+# Environment variables
+.env
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Node.js
+node_modules/
+frontend/node_modules/
+
+# Build artifacts
+dist/
+build/
+frontend/dist/
+
+# macOS
+.DS_Store
