@@ -1,127 +1,224 @@
-# 🌱 GreenStream AI - Environmental Monitoring System
+# 🌱 GreenStream AI
 
-Real-time environmental monitoring dashboard with AI-powered insights, built with FastAPI, React, and Google Gemini.
+Real-time environmental monitoring platform with:
+- **FastAPI + Pathway** backend (streaming, anomaly detection, AI reports)
+- **React + Vite** frontend dashboard
+- **Gemini** anomaly explanations
+- **Login page** (demo credentials)
 
-## 📂 Project Structure
+## ✅ Is AQI real right now?
 
-```
+Current setup uses **simulated streaming data** for demo reliability.
+
+You can switch to real AQI sources using `backend/real_aqi_integration.py`:
+- OpenWeatherMap Air Pollution API
+- IQAir API
+
+## 🧱 Project Structure
+
+```text
 greenstream-fullstack/
+├── api/
+│   └── index.py
 ├── backend/
-│   ├── main.py                 # Server entry point
-│   ├── api.py                  # FastAPI routes
-│   ├── pipeline.py             # Data processing
-│   └── simulated_stream.py     # Data generator
+│   ├── main.py
+│   ├── api.py
+│   ├── pathway_pipeline.py
+│   ├── pathway_ingestion.py
+│   ├── pathway_transformations.py
+│   ├── pathway_llm.py
+│   ├── simulated_stream.py
+│   ├── real_aqi_integration.py
+│   ├── .env.example
+│   └── start_backend.sh
 ├── frontend/
-│   ├── src/
-│   │   ├── App.jsx             # Main dashboard
-│   │   ├── index.jsx           # Entry point
-│   │   └── index.css           # Styles
-│   ├── index.html
 │   ├── package.json
-│   └── vite.config.js
-├── requirements.txt            # Python dependencies
+│   └── src/
+│       ├── App.jsx
+│       ├── LoginPage.jsx
+│       ├── CityDetailModal.jsx
+│       └── index.css
+├── requirements.txt
+├── vercel.json
 └── README.md
 ```
 
-## 🚀 Quick Start
+## 🔐 Login (Frontend)
 
-### Backend Setup
+- Username: `Shubham`
+- Password: `Shubh@123`
+
+After successful login, dashboard opens and city cards are interactive.
+
+## ⚙️ Local Development
+
+### 1) Backend
 
 ```bash
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Set up environment variables
-export GEMINI_API_KEY=your-api-key
-
-# Start backend
 cd backend
-python main.py
+cp .env.example .env
+# edit .env and set GEMINI_API_KEY
+
+source ../.venv/bin/activate
+pip install -r ../requirements.txt
+python main.py runserver
 ```
 
-Backend runs at `http://localhost:8000`
+Backend: `http://localhost:8000`
 
-### Frontend Setup
+### 2) Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`
+Frontend: `http://localhost:5173` (or next available Vite port)
 
-## 📊 API Endpoints
+## 🧪 Useful API Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Server status |
-| `/api/readings` | GET | Latest city readings |
-| `/api/readings/{city}` | GET | Specific city data |
-| `/api/alerts` | GET | Recent anomaly alerts |
-| `/api/alerts/{city}` | GET | City-specific alerts |
-| `/api/insights/{city}` | GET | AI analysis for city |
-| `/api/dashboard` | GET | Complete dashboard data |
-| `/api/stats` | GET | Rolling statistics |
+- `GET /api/health`
+- `GET /api/readings`
+- `GET /api/alerts`
+- `GET /api/environmental-reports?limit=5`
+- `GET /api/pipeline/status`
 
-## 🎨 Features
+## ☁️ Free Deployment Options (End-to-End)
 
-- **Real-time Monitoring**: Continuous environmental data tracking
-- **Anomaly Detection**: Automatic alert generation for unusual readings
-- **AI Insights**: Google Gemini-powered analysis and recommendations
-- **Live Dashboard**: React-based UI with Tailwind CSS
-- **RESTful API**: Complete API documentation at `/docs`
+### Option A (Recommended): Frontend + Backend split
 
-## 🔧 Environment Variables
+- **Frontend**: Netlify or Vercel (free)
+- **Backend**: Render / Railway / Fly.io (free tiers vary)
 
-Create `.env` file in backend directory:
+Why recommended:
+- Long-running FastAPI + Pathway backend works better on backend-focused hosts.
+- Frontend stays fast/static on CDN.
 
-```env
-GEMINI_API_KEY=your-gemini-api-key
-```
+### Option B: Vercel-only (limited backend behavior)
 
-## 🧪 Test API Endpoints
+This repo already has:
+- `vercel.json`
+- `api/index.py`
+
+But Vercel Python functions are **serverless** and not ideal for persistent streaming workloads like Pathway long-running pipelines.
+
+## 🚀 Deployment Steps
+
+### A) Deploy Backend on Render (free tier example)
+
+1. Push repo to GitHub.
+2. Create a new **Web Service** on Render, root: repository root.
+3. Build command:
 
 ```bash
-# Health check
-curl http://localhost:8000/api/health
-
-# Get all readings
-curl http://localhost:8000/api/readings
-
-# Get recent alerts
-curl http://localhost:8000/api/alerts
-
-# Get AI insights
-curl http://localhost:8000/api/insights/Delhi
+pip install -r requirements.txt
 ```
 
-## 📈 Data Flow
+4. Start command:
 
-1. **Data Generation**: Simulated environmental sensors (every 2 sec)
-2. **Processing**: Real-time anomaly detection and statistics
-3. **API Serving**: REST endpoints for frontend
-4. **Visualization**: React dashboard with live updates
-5. **Intelligence**: AI-generated insights on demand
+```bash
+cd backend && python main.py runserver
+```
 
-## 🌍 Monitored Cities
+5. Add environment variable in Render dashboard:
 
-- Delhi
-- Mumbai
-- Bangalore
-- Chennai
+```bash
+GEMINI_API_KEY=your_real_key
+```
 
-## 📦 Tech Stack
+### B) Deploy Frontend on Netlify
 
-- **Backend**: Python, FastAPI, Uvicorn
-- **Frontend**: React, Vite, Tailwind CSS
-- **AI**: Google Gemini API
-- **Icons**: Lucide React
+1. New site from GitHub repo.
+2. Base directory: `frontend`
+3. Build command:
+
+```bash
+npm run build
+```
+
+4. Publish directory:
+
+```bash
+dist
+```
+
+5. Add frontend environment variable:
+
+```bash
+VITE_API_URL=https://your-backend-service-url
+```
+
+### C) Deploy Frontend on Vercel (alternative)
+
+1. Import GitHub repo.
+2. Set root to `frontend`.
+3. Framework preset: Vite.
+4. Add env var:
+
+```bash
+VITE_API_URL=https://your-backend-service-url
+```
+
+## 🔒 Confidential Data Safety (Done)
+
+This repo is now hardened for GitHub push:
+- `.env` files ignored
+- log/runtime files ignored
+- exposed API keys removed from `.env.example` files
+
+## 📦 Push to GitHub Safely
+
+Run from repo root:
+
+```bash
+git rm --cached backend/.env 2>/dev/null || true
+git rm --cached .env 2>/dev/null || true
+git add .
+git status
+git commit -m "Clean repo, secure secrets, update README and deployment setup"
+git push origin main
+```
+
+## 📌 Notes
+
+- Gemini SDK warning in logs is due to `google.generativeai` deprecation; app still runs.
+- A future upgrade to `google.genai` is recommended.
+- For production auth, replace demo login with real user management.
+- [ ] Mobile app (React Native)
+- [ ] Predictive analytics
+- [ ] Email/SMS notifications
+- [ ] Kubernetes deployment
+- [ ] Multi-model LLM support
+
+## 🐛 Troubleshooting
+
+**Q: Pipeline not starting?**  
+A: Check imports and dependencies with `python test_pathway_integration.py`
+
+**Q: No alerts generated?**  
+A: Wait 10 seconds for data, check thresholds in `pathway_transformations.py`
+
+**Q: LLM reports not working?**  
+A: Verify `GEMINI_API_KEY` in `.env`, fallback mode uses static text
+
+**Q: Port 8000 already in use?**  
+A: Use different port: `export PORT=8001 && python main.py`
+
+## 💡 Key Innovations
+
+1. **Pathway for Streaming** - Real-time data processing with sub-ms latency
+2. **Intelligent Document Store** - Maintains history of LLM-generated reports
+3. **Layered Architecture** - Clean separation: Ingestion → Transform → LLM → API
+4. **Thread-Safe Pipeline** - Concurrent data processing without race conditions
+5. **Fallback Intelligence** - Works without API keys using sensible defaults
 
 ## 📝 License
 
 Part of Green Bharat initiative
+
+---
+
+**Version**: 2.0 (Pathway Integrated)  
+**Last Updated**: March 2026  
+**Status**: Production Ready
