@@ -9,7 +9,7 @@ export default function Dashboard() {
   const [insight, setInsight] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE = 'http://localhost:8000/api';
+  const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
   // Fetch data every 3 seconds
   useEffect(() => {
@@ -29,7 +29,7 @@ export default function Dashboard() {
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, []);
+  }, [API_BASE]);
 
   // Fetch AI insight when city is selected
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function Dashboard() {
       };
       fetchInsight();
     }
-  }, [selectedCity]);
+  }, [API_BASE, selectedCity]);
 
   const getAQIColor = (aqi) => {
     if (aqi < 50) return 'bg-green-100 border-green-300';

@@ -61,7 +61,7 @@ cp .env.example .env
 
 source ../.venv/bin/activate
 pip install -r ../requirements.txt
-python main.py runserver
+python main.py
 ```
 
 Backend: `http://localhost:8000`
@@ -118,7 +118,7 @@ pip install -r requirements.txt
 4. Start command:
 
 ```bash
-cd backend && python main.py runserver
+cd backend && uvicorn api:app --host 0.0.0.0 --port $PORT
 ```
 
 5. Add environment variable in Render dashboard:
@@ -126,6 +126,8 @@ cd backend && python main.py runserver
 ```bash
 GEMINI_API_KEY=your_real_key
 ```
+
+6. Optional: Use included `render.yaml` for one-click setup.
 
 ### B) Deploy Frontend on Netlify
 
@@ -148,6 +150,8 @@ dist
 ```bash
 VITE_API_URL=https://your-backend-service-url
 ```
+
+6. Optional: Use included `netlify.toml` for one-click setup.
 
 ### C) Deploy Frontend on Vercel (alternative)
 
