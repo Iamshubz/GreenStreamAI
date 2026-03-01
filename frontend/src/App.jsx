@@ -254,7 +254,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-gray-400 text-sm">Avg AQI</p>
                 <p className="text-4xl font-bold text-orange-400 mt-1">
-                  {Math.round(cityArray.reduce((acc, [, data]) => acc + data.aqi, 0) / cityArray.length)}
+                  {cityArray.length > 0 ? Math.round(cityArray.reduce((acc, [, data]) => acc + data.aqi, 0) / cityArray.length) : 'N/A'}
                 </p>
               </div>
               <Activity className="text-orange-400" size={40} />
@@ -266,7 +266,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-gray-400 text-sm">Avg Temp</p>
                 <p className="text-4xl font-bold text-blue-400 mt-1">
-                  {Math.round(cityArray.reduce((acc, [, data]) => acc + data.temperature, 0) / cityArray.length)}°C
+                  {cityArray.length > 0 ? Math.round(cityArray.reduce((acc, [, data]) => acc + data.temperature, 0) / cityArray.length) : 'N/A'}°C
                 </p>
               </div>
               <Thermometer className="text-blue-400" size={40} />

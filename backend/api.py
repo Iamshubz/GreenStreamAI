@@ -249,24 +249,33 @@ RECOMMENDATION: [1-2 sentence recommendation]"""
 @app.get("/api/dashboard")
 async def get_dashboard() -> dict:
     """Get complete dashboard summary"""
-    # Prefer Pathway data
-    summary = pathway_data_store.get_dashboard_summary()
-    if summary.get("total_cities", 0) > 0:
-        return summary
+    # Get readings from Pathway data store
+    readings = pathway_data_store.get_all_readings()
     
-    # Fallback to legacy
-    readings = pipeline_state.get("latest_readings", {})
+    # Fallback to legacy if no Pathway data
+    if not readings:
+        readings = pipeline_state.get("latest_readings", {})
+    
     cities = list(readings.keys())
     alerts = pipeline_state.get("alerts", [])
     
+    # Calculate stats
+    total_cities = len(cities)
+    critical_count = len([a for a in alerts if a.get("severity") == "critical"])
+    warning_count = len([a for a in alerts if a.get("severity") == "warning"])
+    avg_aqi = round(sum(r.get("aqi", 0) for r in readings.values()) / total_cities, 1) if total_cities else 0
+    avg_health = round(sum(r.get("health_score", 50) for r in readings.values()) / total_cities, 1) if total_cities else 0
+    
     return {
-        "total_cities": len(cities),
+        "total_cities": total_cities,
         "cities": cities,
-        "critical_alerts": len([a for a in alerts if a.get("severity") == "critical"]),
-        "warnings": len([a for a in alerts if a.get("severity") == "warning"]),
-        "average_aqi": round(sum(r.get("aqi", 0) for r in readings.values()) / len(cities), 1) if cities else 0,
+        "critical_alerts": critical_count,
+        "warnings": warning_count,
+        "average_aqi": avg_aqi,
+        "average_health_score": avg_health,
         "readings": readings,
         "recent_alerts": alerts[-10:],
+        "recent_stats": [],
         "timestamp": datetime.now().isoformat()
     }
 
