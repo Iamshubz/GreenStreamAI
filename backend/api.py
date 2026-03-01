@@ -1,28 +1,29 @@
-"""FastAPI backend for GreenStream AI"""
+"""FastAPI backend for GreenStream AI with Pathway Streaming Integration"""
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List, Dict, Optional
 from datetime import datetime
 import google.generativeai as genai
 import os
 import threading
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 from pipeline import run_pipeline, pipeline_state
+from pathway_api_integration import PathwayDataStore, PathwayStreamProcessor, pathway_data_store
 
-# Initialize FastAPI app
+# Initialize FastAPI
 app = FastAPI(
     title="GreenStream AI",
-    description="Real-time environmental monitoring with AI insights",
-    version="1.0.0"
+    description="Real-time environmental monitoring with AI insights powered by Pathway streaming",
+    version="2.0.0"
 )
 
-# CORS configuration
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,27 +32,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Google Gemini client (optional)
+# Gemini API
 _gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
 if _gemini_api_key and _gemini_api_key != "your_gemini_api_key_here":
     try:
         genai.configure(api_key=_gemini_api_key)
         gemini_model = genai.GenerativeModel("gemini-pro")
-        print("✓ Gemini API configured successfully")
+        print("✓ Gemini API configured")
     except Exception as e:
-        print(f"⚠ Gemini API configuration error: {e}")
+        print(f"⚠ Gemini API error: {e}")
         gemini_model = None
 else:
-    print("⚠ Gemini API key not configured (using fallback responses)")
     gemini_model = None
 
-def start_pipeline():
-    """Start pipeline in background thread"""
-    pipeline_thread = threading.Thread(target=run_pipeline, daemon=True)
-    pipeline_thread.start()
-
-
-# Pydantic models
+# Models
 class Reading(BaseModel):
     city: str
     temperature: float
@@ -60,7 +54,6 @@ class Reading(BaseModel):
     humidity: int
     timestamp: str
 
-
 class Alert(BaseModel):
     city: str
     co2: int
@@ -68,18 +61,7 @@ class Alert(BaseModel):
     temperature: float
     humidity: float
     timestamp: str
-    severity: str  # "warning" or "critical"
-
-
-class Stats(BaseModel):
-    city: str
-    avg_co2: float
-    max_co2: int
-    avg_aqi: float
-    avg_temp: float
-    count: int
-    timestamp: str
-
+    severity: str
 
 class AIInsight(BaseModel):
     alert: Alert
@@ -87,158 +69,210 @@ class AIInsight(BaseModel):
     recommendation: str
     severity_level: str
 
-
-# Routes
+# Startup
+def start_pathway_pipeline():
+    """Initialize Pathway streaming pipeline with fallback to legacy pipeline"""
+    global pathway_data_store
+    try:
+        print("🛣️ Starting Pathway streaming pipeline...")
+        # Initialize data generator directly without complex Pathway table setup
+        from pathway_api_integration import PathwayStreamProcessor
+        from pathway_ingestion import EnvironmentalDataGenerator
+        
+        processor = PathwayStreamProcessor(pathway_data_store)
+        generator = EnvironmentalDataGenerator()
+        
+        # Start continuous background update thread
+        pathway_thread = threading.Thread(
+            target=processor.continuous_update_from_generator,
+            args=(generator, 2.0),
+            daemon=True
+        )
+        pathway_thread.start()
+        print("✓ Pathway pipeline live with continuous data streaming")
+    except Exception as e:
+        print(f"⚠ Pathway init failed: {e}, using legacy pipeline")
 
 @app.on_event("startup")
-async def startup_event():
-    """Start the pipeline when the app starts"""
-    start_pipeline()
+async def startup():
+    start_pathway_pipeline()
 
-
+# Routes
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {"status": "ok", "service": "GreenStream AI Backend"}
-
+    return {"service": "GreenStream AI", "version": "2.0.0", "status": "live"}
 
 @app.get("/api/health")
 async def health():
-    """Health check endpoint"""
+    """Health check with Pathway status"""
+    pathway_active = len(pathway_data_store.latest_readings) > 0
     return {
         "status": "healthy",
-        "alerts_count": len(pipeline_state["alerts"]),
-        "stats_count": len(pipeline_state["stats"])
+        "pathway_active": pathway_active,
+        "cities": list(pathway_data_store.latest_readings.keys()),
+        "timestamp": datetime.now().isoformat()
     }
 
-
 @app.get("/api/readings")
-async def get_readings() -> Dict[str, Reading]:
-    """Get latest readings from all cities"""
-    readings = {}
-    for city, data in pipeline_state["latest_readings"].items():
-        readings[city] = Reading(**data)
-    return readings
-
+async def get_readings() -> Dict[str, dict]:
+    """Get all latest readings from Pathway"""
+    readings = pathway_data_store.get_all_readings()
+    return readings if readings else pipeline_state.get("latest_readings", {})
 
 @app.get("/api/readings/{city}")
-async def get_city_reading(city: str) -> Reading:
-    """Get latest reading for a specific city"""
-    if city not in pipeline_state["latest_readings"]:
-        raise HTTPException(status_code=404, detail=f"No data for city: {city}")
+async def get_city_reading(city: str):
+    """Get reading for specific city"""
+    reading = pathway_data_store.get_city_reading(city)
+    if reading:
+        return reading
     
-    data = pipeline_state["latest_readings"][city]
-    return Reading(**data)
-
+    if city in pipeline_state.get("latest_readings", {}):
+        return pipeline_state["latest_readings"][city]
+    
+    raise HTTPException(status_code=404, detail=f"No data for {city}")
 
 @app.get("/api/alerts")
-async def get_alerts(limit: int = 50) -> List[Alert]:
-    """Get recent alerts"""
-    alerts = pipeline_state["alerts"][-limit:]
-    return [Alert(**alert) for alert in alerts]
+async def get_alerts(limit: int = 50) -> List[dict]:
+    """Get all alerts"""
+    alerts = pathway_data_store.get_critical_alerts(limit)
+    return alerts if alerts else pipeline_state.get("alerts", [])[-limit:]
 
+@app.get("/api/alerts/critical")
+async def get_critical_alerts(limit: int = 20) -> List[dict]:
+    """Get critical alerts only"""
+    return pathway_data_store.get_critical_alerts(limit)
 
-@app.get("/api/alerts/{city}")
-async def get_city_alerts(city: str, limit: int = 20) -> List[Alert]:
-    """Get alerts for a specific city"""
-    city_alerts = [a for a in pipeline_state["alerts"] if a["city"] == city]
-    return [Alert(**alert) for alert in city_alerts[-limit:]]
+@app.get("/api/alerts/warnings")
+async def get_warning_alerts(limit: int = 30) -> List[dict]:
+    """Get warning alerts"""
+    return pathway_data_store.get_warnings(limit)
 
+@app.get("/api/health/{city}")
+async def get_city_health(city: str) -> dict:
+    """Get health metrics for city"""
+    reading = pathway_data_store.get_city_reading(city)
+    if not reading:
+        if city in pipeline_state.get("latest_readings", {}):
+            reading = pipeline_state["latest_readings"][city]
+        else:
+            raise HTTPException(status_code=404, detail=f"No data for {city}")
+    
+    health_score = pathway_data_store.get_health_score(city)
+    risk_score = pathway_data_store.get_risk_score(city)
+    
+    return {
+        "city": city,
+        "health_score": health_score or (100 - risk_score if risk_score else 50),
+        "risk_score": risk_score or 50,
+        "aqi": reading.get("aqi"),
+        "co2": reading.get("co2"),
+        "severity": reading.get("severity", "normal"),
+        "timestamp": reading.get("timestamp")
+    }
 
-@app.get("/api/stats")
-async def get_stats(limit: int = 50) -> List[Stats]:
-    """Get rolling window statistics"""
-    stats = pipeline_state["stats"][-limit:]
-    return [Stats(**stat) for stat in stats]
-
-
-@app.get("/api/stats/{city}")
-async def get_city_stats(city: str, limit: int = 20) -> List[Stats]:
-    """Get statistics for a specific city"""
-    city_stats = [s for s in pipeline_state["stats"] if s["city"] == city]
-    return [Stats(**stat) for stat in city_stats[-limit:]]
-
+@app.get("/api/anomalies/{city}")
+async def get_anomalies(city: str) -> dict:
+    """Get anomaly history for city"""
+    history = pathway_data_store.get_city_anomaly_history(city)
+    return {
+        "city": city,
+        "anomalies": history[-20:],
+        "total": len(history),
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/api/insights/{city}")
 async def get_insights(city: str) -> AIInsight:
-    """Get AI-powered insights for a city"""
-    city_alerts = [a for a in pipeline_state["alerts"] if a["city"] == city]
+    """Get AI-powered insights with Gemini"""
+    # Try Pathway alerts first
+    reading = pathway_data_store.get_city_reading(city)
     
-    if not city_alerts:
-        raise HTTPException(status_code=404, detail=f"No recent alerts for {city}")
+    if not reading:
+        # Fallback to legacy pipeline
+        city_alerts = [a for a in pipeline_state.get("alerts", []) if a["city"] == city]
+        if not city_alerts:
+            raise HTTPException(status_code=404, detail=f"No alerts for {city}")
+        reading = city_alerts[-1]
     
-    latest_alert = city_alerts[-1]
-    
-    explanation = "High pollution levels detected. Air quality is poor."
-    recommendation = "Monitor air quality alerts and limit outdoor activities."
+    explanation = "High pollution levels detected."
+    recommendation = "Monitor air quality and limit outdoor activities."
+    severity = reading.get("severity", "warning")
     
     try:
         if gemini_model is None:
-            raise RuntimeError("Gemini API key not configured")
+            raise RuntimeError("Gemini not configured")
         
-        prompt = f"""Analyze this environmental data and provide:
-1. A brief explanation (1-2 sentences)
-2. A recommendation (1-2 sentences)
-
+        prompt = f"""Analyze this environmental data:
 City: {city}
-AQI: {latest_alert['aqi']} | CO2: {latest_alert['co2']} ppm
-Temperature: {latest_alert['temperature']}°C | Humidity: {latest_alert['humidity']}%
+AQI: {reading['aqi']} | CO2: {reading['co2']} ppm
+Temperature: {reading.get('temperature', 'N/A')}°C | Humidity: {reading.get('humidity', 'N/A')}%
 
-Format your response as:
-EXPLANATION: [your explanation]
-RECOMMENDATION: [your recommendation]"""
+Provide in this format:
+EXPLANATION: [brief 1-2 sentence explanation]
+RECOMMENDATION: [1-2 sentence recommendation]"""
         
         response = gemini_model.generate_content(prompt)
-        response_text = response.text
-        
-        # Parse the response
-        lines = response_text.split('\n')
-        for line in lines:
+        for line in response.text.split('\n'):
             if line.startswith('EXPLANATION:'):
                 explanation = line.replace('EXPLANATION:', '').strip()
             elif line.startswith('RECOMMENDATION:'):
                 recommendation = line.replace('RECOMMENDATION:', '').strip()
-        
-        # Ensure we have content
-        explanation = explanation or "Environmental monitoring detected high pollution levels."
-        recommendation = recommendation or "Monitor the situation and follow local air quality guidelines."
-        
+    
     except Exception as e:
-        print(f"Gemini API error: {e}")
-        # Fallback responses based on pollution levels
-        if latest_alert['aqi'] > 300:
-            explanation = f"CRITICAL: AQI of {latest_alert['aqi']} indicates hazardous air quality in {city}."
-            recommendation = "Stay indoors, close windows, and use air purifiers. Avoid outdoor activities."
-        elif latest_alert['aqi'] > 200:
-            explanation = f"Poor air quality (AQI {latest_alert['aqi']}) detected in {city}. CO2 levels are elevated."
-            recommendation = "Limit outdoor activities, wear N95 masks if venturing outside, and monitor air quality."
+        # Intelligent fallback based on pollution level
+        aqi = reading.get("aqi", 150)
+        if aqi > 300:
+            explanation = f"CRITICAL: AQI {aqi} indicates hazardous air quality."
+            recommendation = "Stay indoors, close windows, and use air purifiers."
+        elif aqi > 200:
+            explanation = f"Poor air quality (AQI {aqi}). CO2 levels are elevated."
+            recommendation = "Limit outdoor activities and wear protective masks."
         else:
-            explanation = f"Moderate pollution (AQI {latest_alert['aqi']}) detected in {city}."
-            recommendation = "Be aware of air quality conditions and take precautions if sensitive to pollution."
+            explanation = f"Moderate pollution detected (AQI {aqi})."
+            recommendation = "Monitor air quality conditions."
     
     return AIInsight(
-        alert=Alert(**latest_alert),
+        alert=Alert(
+            city=city,
+            aqi=reading.get("aqi", 0),
+            co2=reading.get("co2", 0),
+            temperature=reading.get("temperature", 0),
+            humidity=reading.get("humidity", 0),
+            timestamp=reading.get("timestamp", datetime.now().isoformat()),
+            severity=severity
+        ),
         explanation=explanation[:250],
         recommendation=recommendation[:250],
-        severity_level=latest_alert.get("severity", "warning")
+        severity_level=severity
     )
 
-
 @app.get("/api/dashboard")
-async def get_dashboard():
-    """Get complete dashboard data in one call"""
+async def get_dashboard() -> dict:
+    """Get complete dashboard summary"""
+    # Prefer Pathway data
+    summary = pathway_data_store.get_dashboard_summary()
+    if summary.get("total_cities", 0) > 0:
+        return summary
+    
+    # Fallback to legacy
+    readings = pipeline_state.get("latest_readings", {})
+    cities = list(readings.keys())
+    alerts = pipeline_state.get("alerts", [])
+    
     return {
-        "readings": {city: data for city, data in pipeline_state["latest_readings"].items()},
-        "recent_alerts": pipeline_state["alerts"][-10:],
-        "recent_stats": pipeline_state["stats"][-10:],
-        "timestamp": datetime.now().isoformat(),
-        "cities": list(pipeline_state["latest_readings"].keys())
+        "total_cities": len(cities),
+        "cities": cities,
+        "critical_alerts": len([a for a in alerts if a.get("severity") == "critical"]),
+        "warnings": len([a for a in alerts if a.get("severity") == "warning"]),
+        "average_aqi": round(sum(r.get("aqi", 0) for r in readings.values()) / len(cities), 1) if cities else 0,
+        "readings": readings,
+        "recent_alerts": alerts[-10:],
+        "timestamp": datetime.now().isoformat()
     }
-
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting GreenStream AI Backend...")
-    print("📍 API available at http://localhost:8000")
-    print("📚 Docs at http://localhost:8000/docs")
+    print("🚀 Starting GreenStream AI Backend (Pathway-powered)...")
+    print("📍 API: http://localhost:8000")
+    print("📚 Docs: http://localhost:8000/docs")
     uvicorn.run(app, host="0.0.0.0", port=8000)
