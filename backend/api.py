@@ -8,6 +8,10 @@ from datetime import datetime
 import google.generativeai as genai
 import os
 import threading
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from pipeline import run_pipeline, pipeline_state
 
@@ -28,11 +32,17 @@ app.add_middleware(
 )
 
 # Initialize Google Gemini client (optional)
-_gemini_api_key = os.getenv("GEMINI_API_KEY")
-if _gemini_api_key:
-    genai.configure(api_key=_gemini_api_key)
-    gemini_model = genai.GenerativeModel("gemini-pro")
+_gemini_api_key = os.getenv("GEMINI_API_KEY", "").strip()
+if _gemini_api_key and _gemini_api_key != "your_gemini_api_key_here":
+    try:
+        genai.configure(api_key=_gemini_api_key)
+        gemini_model = genai.GenerativeModel("gemini-pro")
+        print("✓ Gemini API configured successfully")
+    except Exception as e:
+        print(f"⚠ Gemini API configuration error: {e}")
+        gemini_model = None
 else:
+    print("⚠ Gemini API key not configured (using fallback responses)")
     gemini_model = None
 
 def start_pipeline():
@@ -159,28 +169,57 @@ async def get_insights(city: str) -> AIInsight:
     
     latest_alert = city_alerts[-1]
     
+    explanation = "High pollution levels detected. Air quality is poor."
+    recommendation = "Monitor air quality alerts and limit outdoor activities."
+    
     try:
         if gemini_model is None:
             raise RuntimeError("Gemini API key not configured")
-        prompt = f"""Environmental Alert Analysis for {city}:
-CO2: {latest_alert['co2']} ppm | AQI: {latest_alert['aqi']}
+        
+        prompt = f"""Analyze this environmental data and provide:
+1. A brief explanation (1-2 sentences)
+2. A recommendation (1-2 sentences)
+
+City: {city}
+AQI: {latest_alert['aqi']} | CO2: {latest_alert['co2']} ppm
 Temperature: {latest_alert['temperature']}°C | Humidity: {latest_alert['humidity']}%
 
-As an environmental scientist, briefly explain what causes this alert and recommend actions."""
+Format your response as:
+EXPLANATION: [your explanation]
+RECOMMENDATION: [your recommendation]"""
         
         response = gemini_model.generate_content(prompt)
-        insight_text = response.text
-        parts = insight_text.split("\n")
-        explanation = " ".join(p for p in parts if "2." not in p and p.strip())[:200]
-        recommendation = " ".join(p for p in parts if "2." in p or "recommended" in p.lower())[:200]
-    except Exception:
-        explanation = f"High pollution levels detected in {city}."
-        recommendation = f"Monitor situation and follow local air quality guidance."
+        response_text = response.text
+        
+        # Parse the response
+        lines = response_text.split('\n')
+        for line in lines:
+            if line.startswith('EXPLANATION:'):
+                explanation = line.replace('EXPLANATION:', '').strip()
+            elif line.startswith('RECOMMENDATION:'):
+                recommendation = line.replace('RECOMMENDATION:', '').strip()
+        
+        # Ensure we have content
+        explanation = explanation or "Environmental monitoring detected high pollution levels."
+        recommendation = recommendation or "Monitor the situation and follow local air quality guidelines."
+        
+    except Exception as e:
+        print(f"Gemini API error: {e}")
+        # Fallback responses based on pollution levels
+        if latest_alert['aqi'] > 300:
+            explanation = f"CRITICAL: AQI of {latest_alert['aqi']} indicates hazardous air quality in {city}."
+            recommendation = "Stay indoors, close windows, and use air purifiers. Avoid outdoor activities."
+        elif latest_alert['aqi'] > 200:
+            explanation = f"Poor air quality (AQI {latest_alert['aqi']}) detected in {city}. CO2 levels are elevated."
+            recommendation = "Limit outdoor activities, wear N95 masks if venturing outside, and monitor air quality."
+        else:
+            explanation = f"Moderate pollution (AQI {latest_alert['aqi']}) detected in {city}."
+            recommendation = "Be aware of air quality conditions and take precautions if sensitive to pollution."
     
     return AIInsight(
         alert=Alert(**latest_alert),
-        explanation=explanation or "Environmental monitoring detected anomaly.",
-        recommendation=recommendation or "Monitor situation.",
+        explanation=explanation[:250],
+        recommendation=recommendation[:250],
         severity_level=latest_alert.get("severity", "warning")
     )
 
