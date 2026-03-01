@@ -1,7 +1,82 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, TrendingUp, CloudRain, Droplets, Wind, MapPin } from 'lucide-react';
+import { AlertCircle, TrendingUp, CloudRain, Droplets, Wind, MapPin, LogOut } from 'lucide-react';
 
+// Login Component
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (username === 'Shubham' && password === 'Shubh@123') {
+      onLogin();
+      setError('');
+    } else {
+      setError('Invalid credentials. Use: Shubham / Shubh@123');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-green-600 mb-2">🌱 GreenStream AI</h1>
+          <p className="text-gray-600">Real-Time Environmental Monitoring</p>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter username"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              placeholder="Enter password"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            Sign In
+          </button>
+        </form>
+
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-gray-700">
+          <p className="font-semibold mb-1">Demo Credentials:</p>
+          <p>Username: <span className="font-mono bg-white px-2 py-1 rounded">Shubham</span></p>
+          <p>Password: <span className="font-mono bg-white px-2 py-1 rounded">Shubh@123</span></p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main Dashboard Component
 export default function Dashboard() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [readings, setReadings] = useState({});
   const [alerts, setAlerts] = useState([]);
   const [stats, setStats] = useState([]);
@@ -10,6 +85,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   // Fetch data every 3 seconds
   useEffect(() => {
@@ -81,11 +161,20 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
       {/* Header */}
       <header className="bg-gradient-to-r from-green-700 to-emerald-700 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <h1 className="text-4xl font-bold flex items-center gap-3">
-            🌿 GreenStream AI
-          </h1>
-          <p className="text-green-100 mt-2">Real-Time Environmental Monitoring Dashboard</p>
+        <div className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold flex items-center gap-3">
+              🌿 GreenStream AI
+            </h1>
+            <p className="text-green-100 mt-2">Real-Time Environmental Monitoring Dashboard</p>
+          </div>
+          <button
+            onClick={() => setIsAuthenticated(false)}
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
+          >
+            <LogOut size={20} />
+            Logout
+          </button>
         </div>
       </header>
 
