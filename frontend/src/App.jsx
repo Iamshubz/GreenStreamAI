@@ -86,13 +86,10 @@ export default function Dashboard() {
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
-  // Show login page if not authenticated
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
-  }
-
   // Fetch data every 3 seconds
   useEffect(() => {
+    if (!isAuthenticated) return;
+    
     const fetchData = async () => {
       try {
         const dashboardRes = await fetch(`${API_BASE}/dashboard`);
@@ -109,23 +106,28 @@ export default function Dashboard() {
     fetchData();
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, [API_BASE]);
+  }, [API_BASE, isAuthenticated]);
 
   // Fetch AI insight when city is selected
   useEffect(() => {
-    if (selectedCity) {
-      const fetchInsight = async () => {
-        try {
-          const res = await fetch(`${API_BASE}/insights/${selectedCity}`);
-          const data = await res.json();
-          setInsight(data);
-        } catch (error) {
-          console.error('Error fetching insight:', error);
-        }
-      };
-      fetchInsight();
-    }
-  }, [API_BASE, selectedCity]);
+    if (!isAuthenticated || !selectedCity) return;
+    
+    const fetchInsight = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/insights/${selectedCity}`);
+        const data = await res.json();
+        setInsight(data);
+      } catch (error) {
+        console.error('Error fetching insight:', error);
+      }
+    };
+    fetchInsight();
+  }, [API_BASE, selectedCity, isAuthenticated]);
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+  }
 
   const getAQIColor = (aqi) => {
     if (aqi < 50) return 'bg-green-100 border-green-300';
