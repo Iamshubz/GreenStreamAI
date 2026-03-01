@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, TrendingUp, CloudRain, Droplets, Wind, MapPin, LogOut } from 'lucide-react';
+import { AlertTriangle, Activity, TrendingUp, MapPin, Droplets, Wind, Thermometer, LogOut } from 'lucide-react';
 
 // Login Component
 function LoginPage({ onLogin }) {
@@ -18,63 +18,110 @@ function LoginPage({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center px-4">
+      <div className="max-w-md w-full bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-green-600 mb-2">🌱 GreenStream AI</h1>
-          <p className="text-gray-600">Real-Time Environmental Monitoring</p>
+          <h1 className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+            🌍 GreenStream AI
+          </h1>
+          <p className="text-gray-300">Smart City Command Center</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent backdrop-blur-sm"
               placeholder="Enter username"
               required
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent backdrop-blur-sm"
               placeholder="Enter password"
               required
             />
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm backdrop-blur-sm">
               {error}
             </div>
           )}
 
           <button
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors"
+            className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-105"
           >
-            Sign In
+            Access Command Center
           </button>
         </form>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg text-sm text-gray-700">
+        <div className="mt-6 p-4 bg-white/5 backdrop-blur-sm rounded-xl text-sm text-gray-300 border border-white/10">
           <p className="font-semibold mb-1">Demo Credentials:</p>
-          <p>Username: <span className="font-mono bg-white px-2 py-1 rounded">Shubham</span></p>
-          <p>Password: <span className="font-mono bg-white px-2 py-1 rounded">Shubh@123</span></p>
+          <p>Username: <span className="font-mono bg-white/10 px-2 py-1 rounded">Shubham</span></p>
+          <p>Password: <span className="font-mono bg-white/10 px-2 py-1 rounded">Shubh@123</span></p>
         </div>
       </div>
     </div>
   );
 }
 
-// Main Dashboard Component
+// Circular AQI Gauge Component
+function AQIGauge({ value, size = 120 }) {
+  const getColor = (aqi) => {
+    if (aqi < 50) return '#10b981';
+    if (aqi < 100) return '#f59e0b';
+    if (aqi < 200) return '#ef4444';
+    return '#dc2626';
+  };
+
+  const percentage = Math.min((value / 500) * 100, 100);
+  const circumference = 2 * Math.PI * 45;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r="45"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth="8"
+          fill="none"
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r="45"
+          stroke={getColor(value)}
+          strokeWidth="8"
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-1000"
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center">
+        <span className="text-3xl font-bold text-white">{value}</span>
+        <span className="text-xs text-gray-400">AQI</span>
+      </div>
+    </div>
+  );
+}
+
+// Main Dashboard
 export default function Dashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [readings, setReadings] = useState({});
@@ -83,10 +130,17 @@ export default function Dashboard() {
   const [selectedCity, setSelectedCity] = useState(null);
   const [insight, setInsight] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api`;
 
-  // Fetch data every 3 seconds
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Fetch data
   useEffect(() => {
     if (!isAuthenticated) return;
     
@@ -108,7 +162,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [API_BASE, isAuthenticated]);
 
-  // Fetch AI insight when city is selected
+  // Fetch AI insight
   useEffect(() => {
     if (!isAuthenticated || !selectedCity) return;
     
@@ -124,240 +178,209 @@ export default function Dashboard() {
     fetchInsight();
   }, [API_BASE, selectedCity, isAuthenticated]);
 
-  // Show login page if not authenticated
   if (!isAuthenticated) {
     return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
   }
 
-  const getAQIColor = (aqi) => {
-    if (aqi < 50) return 'bg-green-100 border-green-300';
-    if (aqi < 100) return 'bg-yellow-100 border-yellow-300';
-    if (aqi < 200) return 'bg-orange-100 border-orange-300';
-    return 'bg-red-100 border-red-300';
-  };
-
-  const getAQILabel = (aqi) => {
-    if (aqi < 50) return '✅ Good';
-    if (aqi < 100) return '⚠️ Moderate';
-    if (aqi < 200) return '⚠️ Poor';
-    return '🚨 Hazardous';
-  };
-
-  const getCO2Status = (co2) => {
-    if (co2 < 600) return '✅ Normal';
-    return '🚨 High';
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-green-50 to-emerald-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-300 border-t-green-600 mx-auto mb-4"></div>
-          <p className="text-green-700 font-semibold">Loading Environmental Data...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-cyan-500 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-cyan-400 font-semibold text-lg">Initializing Command Center...</p>
         </div>
       </div>
     );
   }
 
+  const cityArray = Object.entries(readings);
+  const sortedByAQI = [...cityArray].sort((a, b) => b[1].aqi - a[1].aqi);
+
+  const getHealthScore = (data) => {
+    const aqiScore = Math.max(0, 100 - (data.aqi / 5));
+    const co2Score = Math.max(0, 100 - ((data.co2 - 400) / 5));
+    return Math.round((aqiScore + co2Score) / 2);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
-      <header className="bg-gradient-to-r from-green-700 to-emerald-700 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
+      <header className="bg-black/30 backdrop-blur-xl border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-4xl font-bold flex items-center gap-3">
-              🌿 GreenStream AI
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center gap-3">
+              <Activity className="text-cyan-400" size={32} />
+              GreenStream AI Command Center
             </h1>
-            <p className="text-green-100 mt-2">Real-Time Environmental Monitoring Dashboard</p>
+            <p className="text-gray-400 text-sm mt-1">
+              {currentTime.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'full', timeStyle: 'medium' })}
+            </p>
           </div>
           <button
             onClick={() => setIsAuthenticated(false)}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-white border border-white/20"
           >
-            <LogOut size={20} />
+            <LogOut size={18} />
             Logout
           </button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-12">
-        {/* City Cards Grid */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <MapPin size={28} className="text-green-600" />
-            Environmental Status by City
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {Object.entries(readings).map(([city, data]) => (
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Total Cities</p>
+                <p className="text-4xl font-bold text-white mt-1">{cityArray.length}</p>
+              </div>
+              <MapPin className="text-cyan-400" size={40} />
+            </div>
+          </div>
+          
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Critical Alerts</p>
+                <p className="text-4xl font-bold text-red-400 mt-1">{alerts.filter(a => a.severity === 'critical').length}</p>
+              </div>
+              <AlertTriangle className="text-red-400 animate-pulse" size={40} />
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Avg AQI</p>
+                <p className="text-4xl font-bold text-orange-400 mt-1">
+                  {Math.round(cityArray.reduce((acc, [, data]) => acc + data.aqi, 0) / cityArray.length)}
+                </p>
+              </div>
+              <Activity className="text-orange-400" size={40} />
+            </div>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 animate-fadeIn">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm">Avg Temp</p>
+                <p className="text-4xl font-bold text-blue-400 mt-1">
+                  {Math.round(cityArray.reduce((acc, [, data]) => acc + data.temperature, 0) / cityArray.length)}°C
+                </p>
+              </div>
+              <Thermometer className="text-blue-400" size={40} />
+            </div>
+          </div>
+        </div>
+
+        {/* City Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {cityArray.map(([city, data]) => {
+            const healthScore = getHealthScore(data);
+            return (
               <div
                 key={city}
+                className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 hover:border-cyan-500/50 transition-all cursor-pointer transform hover:scale-105 animate-fadeIn"
                 onClick={() => setSelectedCity(city)}
-                className={`p-6 rounded-xl border-2 cursor-pointer transition-all transform hover:scale-105 ${
-                  selectedCity === city
-                    ? 'bg-white border-green-500 shadow-xl'
-                    : `${getAQIColor(data.aqi)} border-opacity-50`
-                }`}
               >
-                <h3 className="text-xl font-bold text-gray-800 mb-4">{city}</h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <CloudRain size={20} />
-                      <span>AQI</span>
-                    </div>
-                    <div>
-                      <p className="font-bold text-lg">{data.aqi}</p>
-                      <p className="text-sm text-gray-600">{getAQILabel(data.aqi)}</p>
-                    </div>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <MapPin size={20} className="text-cyan-400" />
+                      {city}
+                    </h3>
+                    <p className="text-sm text-gray-400">{new Date(data.timestamp).toLocaleTimeString()}</p>
                   </div>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Wind size={20} />
-                      <span>CO₂</span>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg">{data.co2} ppm</p>
-                      <p className="text-sm text-gray-600">{getCO2Status(data.co2)}</p>
-                    </div>
+                <div className="flex justify-center mb-4">
+                  <AQIGauge value={data.aqi} size={100} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-1">
+                      <Thermometer size={16} /> Temp
+                    </span>
+                    <span className="text-white font-semibold">{data.temperature}°C</span>
                   </div>
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-700">Temp</span>
-                    <p className="font-bold">{data.temperature}°C</p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-1">
+                      <Wind size={16} /> CO₂
+                    </span>
+                    <span className="text-white font-semibold">{data.co2} ppm</span>
                   </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 flex items-center gap-1">
+                      <Droplets size={16} /> Humidity
+                    </span>
+                    <span className="text-white font-semibold">{data.humidity}%</span>
+                  </div>
+                </div>
 
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-gray-700">
-                      <Droplets size={20} />
-                      <span>Humidity</span>
-                    </div>
-                    <p className="font-bold">{data.humidity}%</p>
+                {/* Health Score */}
+                <div className="mt-4 pt-4 border-t border-white/10">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-xs text-gray-400">Health Score</span>
+                    <span className="text-sm font-bold text-white">{healthScore}/100</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all ${
+                        healthScore > 70 ? 'bg-green-500' : healthScore > 40 ? 'bg-yellow-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${healthScore}%` }}
+                    />
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-
-        {/* AI Insight Panel */}
-        {selectedCity && insight && (
-          <section className="mb-12 bg-white rounded-xl shadow-lg p-8 border-l-4 border-green-600">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <TrendingUp size={28} className="text-green-600" />
-              AI Environmental Intelligence - {selectedCity}
-            </h2>
-            
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="font-bold text-lg text-gray-800 mb-3">Current Alert</h3>
-                <div className={`p-4 rounded-lg ${
-                  insight.severity_level === 'critical' 
-                    ? 'bg-red-50 border-2 border-red-300' 
-                    : 'bg-yellow-50 border-2 border-yellow-300'
-                }`}>
-                  <p className="font-semibold text-gray-800">
-                    CO₂: {insight.alert.co2} ppm | AQI: {insight.alert.aqi}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-2">{insight.alert.timestamp}</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-lg text-gray-800 mb-3">Analysis</h3>
-                <p className="text-gray-700 leading-relaxed">{insight.explanation}</p>
-              </div>
-
-              <div className="md:col-span-2">
-                <h3 className="font-bold text-lg text-gray-800 mb-3">Recommended Action</h3>
-                <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4">
-                  <p className="text-gray-700">{insight.recommendation}</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Recent Alerts */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            <AlertCircle size={28} className="text-red-600" />
-            Recent Alerts
-          </h2>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {alerts.slice(-10).reverse().map((alert, idx) => (
-              <div
-                key={idx}
-                className={`p-4 rounded-lg border-l-4 ${
-                  alert.severity === 'critical'
-                    ? 'bg-red-50 border-red-500'
-                    : 'bg-yellow-50 border-yellow-500'
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="font-bold text-gray-800">{alert.city}</p>
-                    <p className="text-sm text-gray-600">
-                      CO₂: {alert.co2} ppm | AQI: {alert.aqi}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                    alert.severity === 'critical'
-                      ? 'bg-red-200 text-red-800'
-                      : 'bg-yellow-200 text-yellow-800'
-                  }`}>
-                    {alert.severity.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Statistics */}
-        <section>
-          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-            📊 Rolling Statistics (10-sec windows)
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {stats.slice(-6).reverse().map((stat, idx) => (
-              <div
-                key={idx}
-                className="bg-white rounded-xl shadow-md p-6 border-t-4 border-green-500"
-              >
-                <h3 className="text-lg font-bold text-gray-800 mb-4">{stat.city}</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Avg CO₂</p>
-                    <p className="text-2xl font-bold text-green-600">{stat.avg_co2.toFixed(1)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Max CO₂</p>
-                    <p className="text-2xl font-bold text-red-600">{stat.max_co2}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Avg AQI</p>
-                    <p className="text-2xl font-bold text-orange-600">{stat.avg_aqi.toFixed(1)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Readings</p>
-                    <p className="text-2xl font-bold text-blue-600">{stat.count}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-gray-300 py-6 mt-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <p>🌱 GreenStream AI - Real-Time Environmental Monitoring</p>
-          <p className="text-sm mt-2">Built with React, Tailwind CSS, and Python</p>
+            );
+          })}
         </div>
-      </footer>
+
+        {/* Rankings Panel */}
+        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="text-red-400" />
+            Most Polluted Cities
+          </h2>
+          <div className="space-y-3">
+            {sortedByAQI.slice(0, 5).map(([city, data], index) => (
+              <div key={city} className="flex items-center justify-between bg-white/5 rounded-xl p-4 backdrop-blur-sm">
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl font-bold text-gray-500">#{index + 1}</span>
+                  <span className="text-white font-semibold">{city}</span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-orange-400 font-bold">AQI {data.aqi}</span>
+                  <span className="text-gray-400">CO₂ {data.co2} ppm</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Insight Modal */}
+        {selectedCity && insight && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setSelectedCity(null)}>
+            <div className="bg-slate-900/95 backdrop-blur-xl rounded-3xl p-8 max-w-2xl w-full border border-cyan-500/30" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-4">
+                AI Analysis: {selectedCity}
+              </h3>
+              <div className="bg-white/5 rounded-xl p-6 text-gray-300 leading-relaxed border border-white/10">
+                {insight.analysis || 'Analyzing environmental data...'}
+              </div>
+              <button
+                onClick={() => setSelectedCity(null)}
+                className="mt-6 w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold py-3 rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
