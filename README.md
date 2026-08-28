@@ -1,4 +1,4 @@
-# 🌱 GreenStream 
+# 🌱 GreenStream AI
 
 Real-time environmental monitoring platform with:
 - **FastAPI + Pathway** backend (streaming, anomaly detection, AI reports)
